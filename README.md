@@ -1,5 +1,5 @@
 ## Introduction
-gal1d is a python package for analysing functional forms of known column or volume density (luminosity) profiles and fitting them.
+gal1d is a python package for analysing functional forms of known surface or volume density (luminosity) profiles and fitting them.
 
 
 ## Maintainers
