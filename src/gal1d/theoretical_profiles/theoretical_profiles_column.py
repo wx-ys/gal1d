@@ -36,6 +36,11 @@ except ImportError:
 class SersicProfile(AbstractBaseProfile):
     '''Represents a Sersic profile.'''
     
+    BOUND = {}
+    BOUND['n'] = [0.2,8]
+    BOUND['r_e'] = None
+    BOUND['I_e'] = None
+    
     def __init__(self,n,r_e,I_e):
         '''Represents a Sersic profile. Sérsic’s (1963, 1968) R^(1/n)
         
@@ -56,15 +61,24 @@ class SersicProfile(AbstractBaseProfile):
         
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
-        n_lower_bound = 0.2
-        n_upper_bound = 20
+        if cls.BOUND['r_e']:
+            r_e_lower_bound = cls.BOUND['r_e'][0]
+            r_e_upper_bound = cls.BOUND['r_e'][1]
+        else:
+            r_e_lower_bound = np.amin(r_values)
+            r_e_upper_bound = np.amax(r_values)
+            
+        if cls.BOUND['I_e']:
+            I_e_lower_bound = cls.BOUND['I_e'][0]
+            I_e_upper_bound = cls.BOUND['I_e'][1]
+        else:
+            I_e_lower_bound = np.amin(rho_values)
+            I_e_upper_bound = np.amax(rho_values)
         
-        r_e_lower_bound = np.amin(r_values)
-        r_e_upper_bound = np.amax(r_values)
         
-        I_e_lower_bound = np.amin(rho_values)
-        I_e_upper_bound = np.amax(rho_values)
-
+        n_lower_bound = cls.BOUND['n'][0]
+        n_upper_bound = cls.BOUND['n'][1]
+        
         return ([n_lower_bound, r_e_lower_bound, I_e_lower_bound], 
                 [n_upper_bound, r_e_upper_bound, I_e_upper_bound])
         
@@ -153,10 +167,10 @@ class SersicProfile(AbstractBaseProfile):
 
 
 class ExponentialProfile(AbstractBaseProfile):
-    '''Represents a exponential profile.'''
+    '''Represents an exponential profile.'''
     
     def __init__(self, I_0, h):
-        '''Represents a exponential profile. 
+        '''Represents an exponential profile. 
         
         Parameters
         ----------

@@ -70,7 +70,7 @@ class AbstractBaseProfile(abc.ABC):
 
     @classmethod
     def fit(cls, radial_data, profile_data, profile_err=None, use_analytical_jac=True, guess=None, verbose=0,
-            return_profile = True):
+            return_profile = True, **kwargs):
         """Fit the given profile using a least-squares method.
 
         Parameters
@@ -136,7 +136,15 @@ class AbstractBaseProfile(abc.ABC):
         if guess is None:
             guess = (np.asarray(upper_bounds) + np.asarray(lower_bounds)) / 2.0
 
-
+        ftol=kwargs.get('ftol',1e-10)
+        xtol=kwargs.get('xtol',1e-10)
+        gtol=kwargs.get('gtol',1e-10)
+        x_scale=kwargs.get('x_scale',1.0)
+        loss=kwargs.get('loss','linear')
+        f_scale=kwargs.get('f_scale',1.0)
+        max_nfev=kwargs.get('max_nfev',len(guess)*1000)         #origin 100*n, changed to 1000*n
+        diff_step=kwargs.get('diff_step',None)
+        tr_solver=kwargs.get('tr_solver',None)
         try:
             parameters, cov = so.curve_fit(profile_wrapper,
                                            radial_data,
@@ -147,15 +155,15 @@ class AbstractBaseProfile(abc.ABC):
                                            check_finite=True,
                                            jac=jac,
                                            method='trf',
-                                           ftol=1e-10,
-                                           xtol=1e-10,
-                                           gtol=1e-10,
-                                           x_scale=1.0,
-                                           loss='linear',
-                                           f_scale=1.0,
-                                           max_nfev=None,
-                                           diff_step=None,
-                                           tr_solver=None,
+                                           ftol=ftol,
+                                           xtol=xtol,
+                                           gtol=gtol,
+                                           x_scale=x_scale,
+                                           loss=loss,
+                                           f_scale=f_scale,
+                                           max_nfev=max_nfev,
+                                           diff_step=diff_step,
+                                           tr_solver=tr_solver,
                                            verbose=verbose)
         except so.OptimizeWarning as w:
             raise RuntimeError(str(w))

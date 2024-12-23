@@ -226,7 +226,15 @@ class DoublePowerLawProfile(AbstractBaseProfile):
             
         (alpha=1-gamma/2+beta0, beta=3+gamma, gamma):  
             the phase-space power-law solutions of Dehnen & McLaughlin (2005), beta0: the anisotropy parameter at the centre
-    
+
+        (alpha=1/2,beta=4,gamma=0):
+            Perfect sphere, finite core (de Zeeuw 1985a,b)
+        
+        (alpha=1/2,beta=3,gamma=0):
+            Mod. Hubble profile, finite core (Binney & Tremaine 1987)
+            
+        (alpha=1/2,beta=2,gamma=0):
+            Mod. isothermal sphere, finite core (Sackett and Sparke 1990)
         '''
         super().__init__()
         self._parameters['density_scale_radius']=density_scale_radius
