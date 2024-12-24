@@ -11,7 +11,7 @@ from .base_utils import *
 class NFWProfile(AbstractBaseProfile):
     """Represents a Navarro-Frenk-White (NFW) profile."""
 
-    def __init__(self, density_scale_radius=None, scale_radius=None, halo_radius=None, concentration=None,
+    def __init__(self, density_scale_radius, scale_radius, halo_radius=None, concentration=None,
                  halo_mass=None):
         """Represents a Navarro-Frenk-White (NFW) profile.
 
@@ -251,7 +251,7 @@ class GNFWProfile(AbstractBaseProfile):
     _trapezoidal_integration = False 
     
     _integration_steps = 1000
-    def __init__(self, density_scale_radius=None, scale_radius=None, gamma=None):
+    def __init__(self, density_scale_radius, scale_radius, gamma):
         '''
         Represents a Generalized NFW profile profile.
         Parameters
