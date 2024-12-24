@@ -194,3 +194,19 @@ class AbstractBaseProfile(abc.ABC):
 
     def __contains__(self, item):
         return item in self._parameters
+    
+# from pyimfit https://github.com/perwin/pyimfit/blob/master/pyimfit/imfit_funcs.py
+# Notes on the different "incomplete gamma functions"
+# http://mpmath.org/doc/current/functions/expintegrals.html?highlight=gammainc#incomplete-gamma-functions
+# https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.gammainc.html
+def gammainc_lower_scipy( z, a, b):
+    a=0
+    return scipy.special.gamma(z) * scipy.special.gammainc(z, b)
+try:
+    from mpmath import besselk as BesselK   # type: ignore
+    from mpmath import gamma as Gamma
+    from mpmath import gammainc as GammaInc
+except ImportError:
+    from scipy.special import kv as BesselK
+    from scipy.special import gamma as Gamma
+    GammaInc = gammainc_lower_scipy

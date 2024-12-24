@@ -14,3 +14,4 @@ gal1d is a python package for analysing functional forms of known surface or vol
 ## Acknowledgments
 * [pynbody](https://github.com/pynbody/pynbody)
 * [pyimfit](https://github.com/perwin/pyimfit)
+* [lenstronomy](https://lenstronomy.readthedocs.io/en/latest/)

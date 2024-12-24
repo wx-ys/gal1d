@@ -5,11 +5,7 @@ pynbody profiles: NFWProfile
 added profiles: SersicProfile, ExponentialProfile
 """
 
-
-import numpy as np
-import scipy
-
-from .base_utils import AbstractBaseProfile
+from .base_utils import *
 
 
 class NFWProfile(AbstractBaseProfile):
@@ -367,7 +363,7 @@ class GNFWProfile(AbstractBaseProfile):
         coef2 = np.power(radius,3)+3*scale_radius*np.power(radius,2)+3*scale_radius**2 *radius +scale_radius**3
         coef3 = (3*radius+scale_radius*gamma)/(radius+scale_radius)
         
-        return np.log(coef1/coef2)-coef3
+        return (np.log(coef1/coef2)-coef3)
         
     def _integral(self, func, x):
         gamma = self._parameters['gamma']
@@ -579,3 +575,127 @@ class DoublePowerLawProfile(AbstractBaseProfile):
         gamma = self._parameters['gamma']
         return - (alpha*scale_radius**(gamma)+beta*radius**gamma)/(scale_radius**gamma+radius**gamma)
     
+    
+class EinastoProfile(AbstractBaseProfile):
+    '''an Einasto profile'''
+    
+    
+    BOUND = {}
+    BOUND['density_scale_radius']=None
+    BOUND['scale_radius']=None
+    BOUND['Einasto_index']=[0,10]
+    
+    def __init__(self, density_scale_radius, scale_radius, Einasto_index):
+        '''Represents an Einasto profile, Einasto (1965, 1969)
+        use the formula in Baes 2022 eq 3.
+        
+        Parameters
+        ----------
+        density_scale_radius : float | array-like, optional
+        
+        scale_radius : float | array-like, optional
+        
+        Einasto_index: float | array-like, optional
+        ----------
+        
+        rho(r) = rhos * exp( -dn * [(r/rs)^(1/n) -1])
+        
+        '''
+        
+        super().__init__()
+        self._parameters['density_scale_radius'] = density_scale_radius
+        self._parameters['scale_radius'] = scale_radius
+        self._parameters['Einasto_index'] = Einasto_index
+        
+        
+    @classmethod
+    def parameter_bounds(cls, r_values, rho_values):
+        
+        if cls.BOUND['density_scale_radius']:
+            density_lower_bound = cls.BOUND['density_scale_radius'][0]
+            density_upper_bound = cls.BOUND['density_scale_radius'][1]
+        else:
+            density_lower_bound = np.amin(rho_values)
+            density_upper_bound = np.amax(rho_values)
+
+        if cls.BOUND['scale_radius']:
+            radial_lower_bound = cls.BOUND['scale_radius'][0]
+            radial_upper_bound = cls.BOUND['scale_radius'][1]
+        else:
+            radial_lower_bound = np.amin(r_values)
+            radial_upper_bound = np.amax(r_values)
+        
+        Einasto_index_lower_bound = cls.BOUND['Einasto_index'][0]
+        Einasto_index_upper_bound = cls.BOUND['Einasto_index'][1]
+
+
+        return ([density_lower_bound, radial_lower_bound, Einasto_index_lower_bound], 
+                [density_upper_bound, radial_upper_bound, Einasto_index_upper_bound])
+        
+    def jacobian(self, radius):
+        density_scale_radius = self._parameters['density_scale_radius']
+        scale_radius = self._parameters['scale_radius']
+        Einasto_index = self._parameters['Einasto_index']
+        dn = self.d_n_exact(Einasto_index)
+        
+        coef0 = np.power(radius/scale_radius,1/Einasto_index)
+        coef1 = np.exp(-dn*(coef0-1))
+        
+        d_density_scale_radius = coef1
+        
+        d_scale_radius = dn*density_scale_radius*coef0*np.exp(dn*(1-coef0))/Einasto_index/scale_radius
+        
+        # use dn ~ 3*n 
+        tempcoef1 = (3*density_scale_radius*coef0-3*density_scale_radius)*Einasto_index
+        tempcoef2 = 3*density_scale_radius*coef0*np.log(radius/scale_radius)
+        tempcoef3 = np.exp(3*Einasto_index*(1-coef0))
+        d_Einasto_index = (tempcoef1-tempcoef2)*tempcoef3/Einasto_index
+    
+
+        return np.transpose([d_density_scale_radius, d_scale_radius, d_Einasto_index])
+    
+    @staticmethod
+    def d_n_exact(n):
+        """Exact calculation of the Sersic derived parameter b_n, via solution
+        of the function
+                Gamma(3n) = 2 gamma_inc(3n, d_n)
+        where Gamma = Gamma function and gamma_inc = lower incomplete gamma function.
+
+        If n is a list or Numpy array, the return value is a 1-d Numpy array
+        
+        use the formula in Baes 2022 eq 3.
+        """
+        def myfunc(dn, n):
+            return abs(float(2*GammaInc(3*n, 0, dn) - Gamma(3*n)))
+        if np.iterable(n):
+            d = [scipy.optimize.brent(myfunc, (nn,)) for nn in n]
+            d = np.array(d)
+        else:
+            d = scipy.optimize.brent(myfunc, (n,))
+        return d
+    
+    
+    def __call__(self, radius):
+        density_scale_radius = self._parameters['density_scale_radius']
+        scale_radius = self._parameters['scale_radius']
+        Einasto_index = self._parameters['Einasto_index']
+        dn = self.d_n_exact(Einasto_index)
+        return density_scale_radius*np.exp(- dn * (np.power(radius/scale_radius,1/Einasto_index)-1))
+    
+    def enclosed_mass(self, radius):
+        # Eq 8 in Baes 2022
+        
+        Einasto_index = self._parameters['Einasto_index']
+        dn = self.d_n_exact(Einasto_index)
+        central_density = self._parameters['density_scale_radius']*np.exp(dn)
+        
+        scale_radius = self._parameters['scale_radius']/dn**Einasto_index
+        
+        return 4*np.pi*central_density*scale_radius**3*Einasto_index*Gamma(3*Einasto_index)
+    
+    def logarithmic_slope(self, radius):
+        Einasto_index = self._parameters['Einasto_index']
+        dn = self.d_n_exact(Einasto_index)
+        
+        scale_radius = self._parameters['scale_radius']/dn**Einasto_index
+        return - (np.power(radius/scale_radius,1/Einasto_index))/(Einasto_index*radius)
