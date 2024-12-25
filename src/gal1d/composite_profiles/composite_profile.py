@@ -21,6 +21,18 @@ class MultiProfiles:
         self._profiles.append(profile)
         self._coefs.append(1.)
         self._panums.append(get_required_params_num(profile))
+        
+    def __getitem__(self, item):
+        
+        if item[0] == 'p':
+            ind = int(item[1:]) - 1
+            ind_s = int(np.sum(self._panums[:ind]))
+            ind_e= int(np.sum(self._panums[:ind+1]))
+            return self._profiles[ind](*tuple(self._paall)[ind_s:ind_e])
+        
+        if item[0] == 'c':
+            ind = int(item[1:]) - 1
+            return self._coefs[ind]
     
     def parameter_bounds(self,radial_data,profile_data):
         lower_bounds = []

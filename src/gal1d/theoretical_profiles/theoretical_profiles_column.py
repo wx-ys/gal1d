@@ -102,6 +102,10 @@ class SersicProfile(AbstractBaseProfile):
         I = I_e * np.exp( -self.b_n_exact(n)*(np.power(radius/r_e, 1.0/n) - 1.0) )
         return I
     
+    def formular(self):
+        s=r'\Sigma(R) = \Sigma_e \mathrm{exp}\{- b_n [(\frac{R}{R_e})^{\frac{1}{n}}-1]\}'
+        return Latex_print(s)
+    
     def enclosed_mass(self, radius):
         I_e = self._parameters['I_e']
         n = self._parameters['n']
@@ -181,6 +185,9 @@ class ExponentialProfile(AbstractBaseProfile):
         I_0 = self._parameters['I_0']
         return I_0*np.exp(-radius/h)
     
+    def formular(self):
+        s=r'\Sigma(R) = \Sigma_0 \mathrm{exp}\{-\frac{R}{h}\}'
+        return Latex_print(s)
     def enclosed_mass(self, radius):
         h = self._parameters['h']
         I_0 = self._parameters['I_0']

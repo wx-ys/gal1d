@@ -2,7 +2,7 @@
 
 pynbody profiles: NFWProfile
 
-added profiles: SersicProfile, ExponentialProfile
+added profiles: GNFWProfile, DoublePowerLawProfile, EinastoProfile
 """
 
 from .base_utils import *
@@ -97,6 +97,11 @@ class NFWProfile(AbstractBaseProfile):
         scale_radius = self._parameters['scale_radius']
         return density_scale_radius / ((radius / scale_radius) * (1.0 + (radius / scale_radius)) ** 2)
 
+    def formular(self):
+        s=r'\rho(r) = \frac{\rho_{s}}{(r / r_s)(1+(r / r_s))^2}'
+        return Latex_print(s)
+    
+    
     def enclosed_mass(self, radius):
         # Eq 7.139 in M vdB W
         radius = np.asarray(radius)
@@ -326,6 +331,10 @@ class GNFWProfile(AbstractBaseProfile):
         coef2 = np.power((1+radius/scale_radius),3 - gamma)
         
         return density_scale_radius/ (coef1 * coef2)
+    
+    def formular(self):
+        s=r'\rho(r) = \frac{\rho_{s}}{(r / r_s)^{\gamma}(1+(r / r_s))^{3-\gamma}}'
+        return Latex_print(s)
     
     def enclosed_mass(self, radius):
         radius = np.asarray(radius)
@@ -562,6 +571,9 @@ class DoublePowerLawProfile(AbstractBaseProfile):
         
         return coef1/(coef2*np.power(coef3,coef4))
         
+    def formular(self):
+        s=r'\rho(r) = \frac{\rho_{s}r_s^{\beta}}{r^{\alpha}(r_s^{\gamma}+r^{\gamma})^{\frac{\beta-\alpha}{\gamma}}}'
+        return Latex_print(s)
     
     def enclosed_mass(self, radius):
         """Return the mass, M(r), enclosed within a given radius"""
@@ -681,6 +693,10 @@ class EinastoProfile(AbstractBaseProfile):
         Einasto_index = self._parameters['Einasto_index']
         dn = self.d_n_exact(Einasto_index)
         return density_scale_radius*np.exp(- dn * (np.power(radius/scale_radius,1/Einasto_index)-1))
+    
+    def formular(self):
+        s=r'\rho(r) = \rho_s \mathrm{exp}\{- d_n [(\frac{r}{r_s})^{\frac{1}{n}}-1]\}'
+        return Latex_print(s)
     
     def enclosed_mass(self, radius):
         # Eq 8 in Baes 2022

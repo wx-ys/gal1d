@@ -210,3 +210,9 @@ except ImportError:
     from scipy.special import kv as BesselK
     from scipy.special import gamma as Gamma
     GammaInc = gammainc_lower_scipy
+    
+class Latex_print():
+    def __init__(self,text):
+        self.t = text
+    def _repr_latex_(self):
+        return f"$${self.t.strip('$')}$$"

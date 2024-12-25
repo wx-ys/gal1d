@@ -2,6 +2,18 @@
 gal1d is a python package for analysing functional forms of known surface or volume density (luminosity) profiles and fitting them.
 
 
+## Installation
+
+```
+git clone https://github.com/wx-ys/gal1d.git
+```
+Install this in editable mode.
+```
+cd gal1d
+pip install -e .
+```
+See [example](example.ipynb) for usage,
+
 ## Maintainers
 
 [@wx-ys](https://github.com/wx-ys).
