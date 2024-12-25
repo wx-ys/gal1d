@@ -93,6 +93,7 @@ class NFWProfile(AbstractBaseProfile):
         return np.transpose([d_central_density, d_scale_radius])
 
     def __call__(self, radius):
+        radius = np.asarray(radius)
         density_scale_radius = self._parameters['density_scale_radius']
         scale_radius = self._parameters['scale_radius']
         return density_scale_radius / ((radius / scale_radius) * (1.0 + (radius / scale_radius)) ** 2)
@@ -300,6 +301,7 @@ class GNFWProfile(AbstractBaseProfile):
                 [density_upper_bound, radial_upper_bound, gamma_upper_bound])
     
     def jacobian(self, radius):
+        radius = np.asarray(radius)
         density_scale_radius = self._parameters['density_scale_radius']
         scale_radius = self._parameters['scale_radius']
         gamma = self._parameters['gamma']
@@ -324,6 +326,7 @@ class GNFWProfile(AbstractBaseProfile):
         return np.transpose([d_density_scale_radius, d_scale_radius,d_gamma])
     
     def __call__(self,radius):
+        radius = np.asarray(radius)
         density_scale_radius = self._parameters['density_scale_radius']
         scale_radius = self._parameters['scale_radius']
         gamma = self._parameters['gamma']
@@ -521,6 +524,7 @@ class DoublePowerLawProfile(AbstractBaseProfile):
                 [density_upper_bound, radial_upper_bound, alpha_upper_bound, beta_upper_bound, gamma_upper_bound])
         
     def jacobian(self, radius):
+        radius = np.asarray(radius)
         density_scale_radius = self._parameters['density_scale_radius']
         scale_radius = self._parameters['scale_radius']
         alpha = self._parameters['alpha']
@@ -559,6 +563,7 @@ class DoublePowerLawProfile(AbstractBaseProfile):
         return np.transpose([d_density_scale_radius, d_scale_radius,d_alpha,d_beta,d_gamma])
     
     def __call__(self,radius):
+        radius = np.asarray(radius)
         density_scale_radius = self._parameters['density_scale_radius']
         scale_radius = self._parameters['scale_radius']
         alpha = self._parameters['alpha']
@@ -580,7 +585,7 @@ class DoublePowerLawProfile(AbstractBaseProfile):
         pass
     
     def logarithmic_slope(self, radius):
-        
+        radius = np.asarray(radius)
         scale_radius = self._parameters['scale_radius']
         alpha = self._parameters['alpha']
         beta = self._parameters['beta']
@@ -645,6 +650,7 @@ class EinastoProfile(AbstractBaseProfile):
                 [density_upper_bound, radial_upper_bound, Einasto_index_upper_bound])
         
     def jacobian(self, radius):
+        radius = np.asarray(radius)
         density_scale_radius = self._parameters['density_scale_radius']
         scale_radius = self._parameters['scale_radius']
         Einasto_index = self._parameters['Einasto_index']
@@ -688,6 +694,7 @@ class EinastoProfile(AbstractBaseProfile):
     
     
     def __call__(self, radius):
+        radius = np.asarray(radius)
         density_scale_radius = self._parameters['density_scale_radius']
         scale_radius = self._parameters['scale_radius']
         Einasto_index = self._parameters['Einasto_index']
@@ -700,7 +707,7 @@ class EinastoProfile(AbstractBaseProfile):
     
     def enclosed_mass(self, radius):
         # Eq 8 in Baes 2022
-        
+        radius = np.asarray(radius)
         Einasto_index = self._parameters['Einasto_index']
         dn = self.d_n_exact(Einasto_index)
         central_density = self._parameters['density_scale_radius']*np.exp(dn)
@@ -710,6 +717,7 @@ class EinastoProfile(AbstractBaseProfile):
         return 4*np.pi*central_density*scale_radius**3*Einasto_index*Gamma(3*Einasto_index)
     
     def logarithmic_slope(self, radius):
+        radius = np.asarray(radius)
         Einasto_index = self._parameters['Einasto_index']
         dn = self.d_n_exact(Einasto_index)
         

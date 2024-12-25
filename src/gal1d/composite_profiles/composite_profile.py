@@ -48,7 +48,7 @@ class MultiProfiles:
         return (lower_bounds,upper_bounds)
     
     def __call__(self, radius, *args):
-        
+        radius = np.asarray(radius)
         parameter = args if args else tuple(self._paall)
         
         pr = 0 if (isinstance(radius,int) or isinstance(radius,float)) else np.zeros(len(radius))
@@ -65,7 +65,7 @@ class MultiProfiles:
         
     def jacobian(self, radius, *args):
         parameter = args if args else tuple(self._paall)
-        
+        radius = np.asarray(radius)
         jacobian_all=[]
         coef_jacobian = []
         for i in range(len(self._profiles)):
@@ -76,8 +76,9 @@ class MultiProfiles:
         return np.transpose(np.vstack([np.vstack(jacobian_all),np.vstack(coef_jacobian)]))
     
     def enclosed_mass(self, radius, *args):
-        parameter = args if args else tuple(self._paall)
         mass = 0 if (isinstance(radius,int) or isinstance(radius,float)) else np.zeros(len(radius))
+        radius = np.asarray(radius)
+        parameter = args if args else tuple(self._paall)
         for i in range(len(self._profiles)):
             ind_s = int(np.sum(self._panums[:i]))
             ind_e= int(np.sum(self._panums[:i+1]))
@@ -86,6 +87,7 @@ class MultiProfiles:
     
     def components_enclosed_mass(self,radius,*args):
         parameter = args if args else tuple(self._paall)
+        radius = np.asarray(radius)
         mass = []
         for i in range(len(self._profiles)):
             ind_s = int(np.sum(self._panums[:i]))
@@ -95,7 +97,7 @@ class MultiProfiles:
         
     def components_profile(self,radius,*args):
         parameter = args if args else tuple(self._paall)
-        
+        radius = np.asarray(radius)
         pr = []
         for i in range(len(self._profiles)):
             ind_s = int(np.sum(self._panums[:i]))
@@ -107,12 +109,12 @@ class MultiProfiles:
     def __repr__(self):
         contain = '||'
         for i in self._profiles:
-            contain = contain + i.__class__.__name__+'|'
+            contain = contain + i.__name__+'|'
         contain = contain + '|'
         return "<" + contain +">"
         
     def fit(self, radial_data, profile_data, profile_err=None, use_analytical_jac=True, guess=None, verbose=0,
-            return_profile = False, **kwargs):
+            return_profile = False, return_cov = False, **kwargs):
         """Fit the given profile using a least-squares method.
 
         Parameters
@@ -224,7 +226,11 @@ class MultiProfiles:
             raise RuntimeError("Fitted parameters are equal to their initial guess. This is likely a failed fit.")
 
         self.set_parameter(*parameters)
-        if return_profile:
+        if return_profile and return_cov:
             return self(radial_data), cov
+        elif return_profile and not return_cov:
+            return self(radial_data)
+        elif return_cov:
+            return cov
         else:
-            return parameters, cov
+            return

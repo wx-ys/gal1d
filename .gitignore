@@ -1,3 +1,4 @@
 __pycache__/
 src/gal1d.egg-info/
 src/gal1d/theoretical_profiles/__pycache__/
+src/gal1d/composite_profiles/__pycache__/

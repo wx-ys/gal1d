@@ -96,6 +96,7 @@ class SersicProfile(AbstractBaseProfile):
         return b
     
     def __call__(self,radius):
+        radius = np.asarray(radius)
         I_e = self._parameters['I_e']
         n = self._parameters['n']
         r_e = self._parameters['r_e']
@@ -107,6 +108,7 @@ class SersicProfile(AbstractBaseProfile):
         return Latex_print(s)
     
     def enclosed_mass(self, radius):
+        radius = np.asarray(radius)
         I_e = self._parameters['I_e']
         n = self._parameters['n']
         r_e = self._parameters['r_e']
@@ -173,6 +175,7 @@ class ExponentialProfile(AbstractBaseProfile):
         return ([I_0_lower_bound, h_lower_bound], [I_0_upper_bound, h_upper_bound])
     
     def jacobian(self, radius):
+        radius = np.asarray(radius)
         h = self._parameters['h']
         I_0 = self._parameters['I_0']
 
@@ -181,6 +184,7 @@ class ExponentialProfile(AbstractBaseProfile):
         return np.transpose([d_I_0, d_h])
     
     def __call__(self, radius):
+        radius = np.asarray(radius)
         h = self._parameters['h']
         I_0 = self._parameters['I_0']
         return I_0*np.exp(-radius/h)
@@ -189,6 +193,7 @@ class ExponentialProfile(AbstractBaseProfile):
         s=r'\Sigma(R) = \Sigma_0 \mathrm{exp}\{-\frac{R}{h}\}'
         return Latex_print(s)
     def enclosed_mass(self, radius):
+        radius = np.asarray(radius)
         h = self._parameters['h']
         I_0 = self._parameters['I_0']
         coef1 = 2*np.pi*h**2*I_0
@@ -198,6 +203,7 @@ class ExponentialProfile(AbstractBaseProfile):
         return coef1+coef2+coef3
     
     def logarithmic_slope(self, radius):
+        radius = np.asarray(radius)
         h = self._parameters['h']
         return -1/(radius*h)
     
@@ -205,3 +211,131 @@ class ExponentialProfile(AbstractBaseProfile):
         h = self._parameters['h']
         I_0 = self._parameters['I_0']
         return 2 * np.pi * I_0 * (h*h) * (1.0 - ell)
+    
+class CoreSersicProfile(AbstractBaseProfile):
+    '''Represents a core-Sersic profile.'''
+    
+    
+    
+    BOUND = {}
+    BOUND['n'] = [0,10]
+    BOUND['alpha'] = [0,20]
+    BOUND['gamma'] = [0,20]
+    def __init__(self,I_b, r_b, r_e, n, alpha, gamma):
+        '''
+        Represents a core-Sersic profile.
+        Graham et al. 2003, Trujillo et al. 2004
+        
+        Parameters
+        ----------
+        I_b:    float, the overall intensity scaling
+        r_b:    float, the break radius
+        r_e:    float, the effective (half-light) radius of Sérsic profile
+        n:      float, the Sérsic index
+        alpha:  float, the smoothness of transition between the two regimes
+        gamma:  float, the single power law for r<r_b
+        ----------
+        
+        '''
+        super().__init__()
+        self._parameters['I_b']=I_b
+        self._parameters['r_b']=r_b
+        self._parameters['r_e']=r_e
+        self._parameters['n']=n
+        self._parameters['alpha']=alpha
+        self._parameters['gamma']=gamma
+        
+    @classmethod
+    def parameter_bounds(cls, r_values, rho_values):
+        I_b_lower_bound = np.amin(rho_values)
+        I_b_upper_bound = np.amax(rho_values)
+
+        r_b_lower_bound = np.amin(r_values)
+        r_b_upper_bound = np.amax(r_values)
+        
+        r_e_lower_bound = np.amin(r_values)
+        r_e_upper_bound = np.amax(r_values)
+        
+        n_lower_bound = cls.BOUND['n'][0]
+        n_upper_bound = cls.BOUND['n'][1]
+        
+        alpha_lower_bound = cls.BOUND['alpha'][0]
+        alpha_upper_bound = cls.BOUND['alpha'][1]
+        
+        gamma_lower_bound = cls.BOUND['gamma'][0]
+        gamma_upper_bound = cls.BOUND['gamma'][1]
+
+        return ([I_b_lower_bound, r_b_lower_bound, r_e_lower_bound, n_lower_bound, alpha_lower_bound, gamma_lower_bound], 
+                [I_b_upper_bound, r_b_upper_bound, r_e_upper_bound, n_upper_bound, alpha_upper_bound, gamma_upper_bound])
+        
+        
+    def jacobian(self, radius):
+        radius = np.asarray(radius)
+        I_b = self._parameters['I_b']
+        r_b = self._parameters['r_b']
+        r_e = self._parameters['r_e']
+        n = self._parameters['n']
+        alpha = self._parameters['alpha']
+        gamma = self._parameters['gamma']
+        bn = SersicProfile.b_n_exact(n)
+        
+        coef1 = np.power(np.power(r_b/radius,alpha)+1,gamma/alpha)
+        coef2 = (np.power(radius,alpha)+r_b**alpha)/r_e**alpha
+        coef3 = np.exp(-bn*np.power(coef2,1/(n*alpha)))
+        d_I_b = coef1*coef3
+        
+        temp_coef1 = I_b*coef1
+        temp_coef2 = bn*r_b**alpha*np.power(coef2,1/(n*alpha))-n*gamma*r_b**alpha
+        temp_coef3 = coef3
+        temp_coef4 = n*(r_b**(alpha+1)+np.power(radius,alpha)*r_b)
+        d_r_b = -temp_coef1*temp_coef2*temp_coef3/temp_coef4
+        
+        temp_coef1 = bn*I_b*coef1
+        temp_coef2 =  np.power(coef2,1/(n*alpha))
+        temp_coef3 = coef3
+        d_r_e = temp_coef1*temp_coef2*temp_coef3/(n*r_e)
+        
+        # use bn = 1.9992n − 0.3271 for 0.5 <n< 10 to cal d(bn)/dn 
+        #  Capaccioli (1989) (see also Prugniel & Simien 1997, their equation A3a
+        temp_coef1 = -2 * coef1 * I_b
+        temp_coef2 = np.power(coef2,1/(n*alpha))*(1 - np.log(coef2)/(alpha*n))
+        temp_coef3 = coef3
+        d_n = temp_coef1*temp_coef2*temp_coef3
+        
+        temp_coef1 = gamma*((np.power(r_b/radius,alpha)*np.log(r_b/radius)*alpha/(np.power(r_b/radius,alpha)+1))
+                            -np.log(np.power(r_b/radius,alpha)+1))
+        temp_coef2 = np.exp((gamma*np.log(np.power(r_b/radius,alpha)+1)/alpha)-bn*np.power(coef2,1/(n*alpha)))
+        temp_coef3 = temp_coef1*temp_coef2/alpha**2
+        temp_coef4 = bn*coef1* np.exp(np.log(coef2/alpha/n)-bn*np.power(coef2,1/(n*alpha)))
+        temp_coef5 = alpha*(r_e**alpha*(np.log(radius)*np.power(radius,alpha)+np.log(r_b)*r_b**alpha)
+                            -np.log(r_e)*r_e**alpha*(np.power(radius,alpha)+r_b**alpha))/(r_e**alpha*(np.power(radius,alpha)+r_b**alpha))
+        temp_coef6 = temp_coef4*(temp_coef5-np.log(coef2))/(n*alpha**2)
+        d_alpha = I_b*(temp_coef3-temp_coef6)
+        
+        d_gamma = I_b*coef1*coef3*np.log(np.power(r_b/radius,alpha)+1)/alpha
+        
+        return np.transpose([d_I_b, d_r_b, d_r_e, d_n, d_alpha, d_gamma])
+    
+    def __call__(self, radius):
+        radius = np.asarray(radius)
+        I_b = self._parameters['I_b']
+        r_b = self._parameters['r_b']
+        r_e = self._parameters['r_e']
+        n = self._parameters['n']
+        alpha = self._parameters['alpha']
+        gamma = self._parameters['gamma']
+        bn = SersicProfile.b_n_exact(n)
+        
+        coef1 = I_b*np.power(np.power(r_b/radius,alpha)+1,gamma/alpha)
+        coef2 = (np.power(radius,alpha)+r_b**alpha)/r_e**alpha
+        coef3 = np.exp(-bn*np.power(coef2,1/(n*alpha)))
+        return coef1*coef3
+    
+    
+    def formular(self):
+        s=r'\Sigma(R) = \Sigma_b [1+(\frac{R_b}{R})^{\alpha}]^{\gamma/\alpha}\mathrm{exp}\{-b (\frac{R^{\alpha}+R_b^{\alpha}}{R_e^{alpha}})^{1/(n\alpha)}\}'
+        return Latex_print(s) 
+    def logarithmic_slope(self,radius):
+        pass
+    def enclosed_mass(self, radius):
+        pass
