@@ -14,6 +14,19 @@ pip install -e .
 ```
 See [example](example.ipynb) for usage,
 
+
+## Profiles
+analysis a single theoretical profile or a combination of the addition of some of these profiles.
+* NFWProfile: a Navarro-Frenk-White (NFW) profile
+* GNFWProfile: a generalized NFW profile profile (Kravtsov 1998)
+* DoublePowerLawProfile: a 'broken' or double power-law profile (Hernquist 1990; Zhao 1996)
+* EinastoProfile: an Einasto profile (Einasto 1965, 1969)
+* SersicProfile: a Sersic profile (Sérsic 1963, 1968)
+* ExponentialProfile: an exponential profile
+* CoreSersicProfile: a core-Sersic profile (Erwin et al. 2008)
+
+...
+
 ## Maintainers
 
 [@wx-ys](https://github.com/wx-ys).
