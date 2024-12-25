@@ -220,7 +220,7 @@ class CoreSersicProfile(AbstractBaseProfile):
     BOUND = {}
     BOUND['n'] = [0,10]
     BOUND['alpha'] = [0,20]
-    BOUND['gamma'] = [0,20]
+    BOUND['gamma'] = [0,2]
     def __init__(self,I_b, r_b, r_e, n, alpha, gamma):
         '''
         Represents a core-Sersic profile.
@@ -229,13 +229,14 @@ class CoreSersicProfile(AbstractBaseProfile):
         Parameters
         ----------
         I_b:    float, the overall intensity scaling
-        r_b:    float, the break radius
-        r_e:    float, the effective (half-light) radius of Sérsic profile
-        n:      float, the Sérsic index
-        alpha:  float, the smoothness of transition between the two regimes
-        gamma:  float, the single power law for r<r_b
+        r_b:    float, the break radius, >0
+        r_e:    float, the effective (half-light) radius of Sérsic profile, >0
+        n:      float, the Sérsic index, >0
+        alpha:  float, the smoothness of transition between the two regimes, >0
+        gamma:  float, the single power law for r<r_b,      <2
         ----------
-        
+        designed to fit the profiles of so-called “core” galaxies e.g., Ferrarese et al. 2006; 
+        Richings et al. 2011; Dullo & Graham 2012, 2013; Rusli et al. 2013
         '''
         super().__init__()
         self._parameters['I_b']=I_b
@@ -333,9 +334,23 @@ class CoreSersicProfile(AbstractBaseProfile):
     
     
     def formular(self):
-        s=r'\Sigma(R) = \Sigma_b [1+(\frac{R_b}{R})^{\alpha}]^{\gamma/\alpha}\mathrm{exp}\{-b (\frac{R^{\alpha}+R_b^{\alpha}}{R_e^{alpha}})^{1/(n\alpha)}\}'
+        s=r'\Sigma(R) = \Sigma_b [1+(\frac{R_b}{R})^{\alpha}]^{\gamma/\alpha}\mathrm{exp}\{-b (\frac{R^{\alpha}+R_b^{\alpha}}{R_e^{\alpha}})^{1/(n\alpha)}\}'
         return Latex_print(s) 
     def logarithmic_slope(self,radius):
+        radius = np.asarray(radius)
+        
+        #I_b = self._parameters['I_b']
+        r_b = self._parameters['r_b']
+        r_e = self._parameters['r_e']
+        n = self._parameters['n']
+        alpha = self._parameters['alpha']
+        gamma = self._parameters['gamma']
+        bn = SersicProfile.b_n_exact(n)
+        coef1 = bn*np.power(radius, alpha)*np.power((np.power(radius,alpha)+r_b**alpha)/r_e**alpha,1/(n*alpha))+n*r_b**alpha*gamma
+        coef2 = n*(np.power(radius,alpha)+r_b**alpha)
+        return - coef1/coef2
+        
+        
         pass
     def enclosed_mass(self, radius):
         pass
