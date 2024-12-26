@@ -602,6 +602,8 @@ class EinastoProfile(AbstractBaseProfile):
     BOUND['scale_radius']=None
     BOUND['Einasto_index']=[0,10]
     
+    DARK_MATTER_HALO=True
+    
     def __init__(self, density_scale_radius, scale_radius, Einasto_index):
         '''Represents an Einasto profile, Einasto (1965, 1969)
         use the formula in Baes 2022 eq 3.
@@ -654,7 +656,7 @@ class EinastoProfile(AbstractBaseProfile):
         density_scale_radius = self._parameters['density_scale_radius']
         scale_radius = self._parameters['scale_radius']
         Einasto_index = self._parameters['Einasto_index']
-        dn = self.d_n_exact(Einasto_index)
+        dn = 2*Einasto_index if self.DARK_MATTER_HALO else self.d_n_exact(Einasto_index)
         
         coef0 = np.power(radius/scale_radius,1/Einasto_index)
         coef1 = np.exp(-dn*(coef0-1))
@@ -664,10 +666,15 @@ class EinastoProfile(AbstractBaseProfile):
         d_scale_radius = dn*density_scale_radius*coef0*np.exp(dn*(1-coef0))/Einasto_index/scale_radius
         
         # use dn ~ 3*n 
-        tempcoef1 = (3*density_scale_radius*coef0-3*density_scale_radius)*Einasto_index
-        tempcoef2 = 3*density_scale_radius*coef0*np.log(radius/scale_radius)
-        tempcoef3 = np.exp(3*Einasto_index*(1-coef0))
-        d_Einasto_index = (tempcoef1-tempcoef2)*tempcoef3/Einasto_index
+        ddn = 2 if self.DARK_MATTER_HALO else 3
+        tempcoef1 = -coef0*np.log(radius/scale_radius)/Einasto_index
+        tempcoef2 = coef0-1
+        tempcoef3 = -ddn*density_scale_radius*(tempcoef1+tempcoef2)
+        d_Einasto_index = tempcoef3*coef1
+       # tempcoef1 = (ddn*density_scale_radius*coef0-ddn*density_scale_radius)*Einasto_index
+        #tempcoef2 = ddn*density_scale_radius*coef0*np.log(radius/scale_radius)
+        #tempcoef3 = np.exp(ddn*Einasto_index*(1-coef0))
+        #d_Einasto_index = (tempcoef1-tempcoef2)*tempcoef3/Einasto_index
     
 
         return np.transpose([d_density_scale_radius, d_scale_radius, d_Einasto_index])
@@ -682,7 +689,7 @@ class EinastoProfile(AbstractBaseProfile):
         If n is a list or Numpy array, the return value is a 1-d Numpy array
         
         use the formula in Baes 2022 eq 3.
-        """
+        """ 
         def myfunc(dn, n):
             return abs(float(2*GammaInc(3*n, 0, dn) - Gamma(3*n)))
         if np.iterable(n):
@@ -698,7 +705,7 @@ class EinastoProfile(AbstractBaseProfile):
         density_scale_radius = self._parameters['density_scale_radius']
         scale_radius = self._parameters['scale_radius']
         Einasto_index = self._parameters['Einasto_index']
-        dn = self.d_n_exact(Einasto_index)
+        dn = 2*Einasto_index if self.DARK_MATTER_HALO else self.d_n_exact(Einasto_index)
         return density_scale_radius*np.exp(- dn * (np.power(radius/scale_radius,1/Einasto_index)-1))
     
     def formular(self):
@@ -709,7 +716,7 @@ class EinastoProfile(AbstractBaseProfile):
         # Eq 8 in Baes 2022
         radius = np.asarray(radius)
         Einasto_index = self._parameters['Einasto_index']
-        dn = self.d_n_exact(Einasto_index)
+        dn = 2*Einasto_index if self.DARK_MATTER_HALO else self.d_n_exact(Einasto_index)
         central_density = self._parameters['density_scale_radius']*np.exp(dn)
         
         scale_radius = self._parameters['scale_radius']/dn**Einasto_index
@@ -719,7 +726,7 @@ class EinastoProfile(AbstractBaseProfile):
     def logarithmic_slope(self, radius):
         radius = np.asarray(radius)
         Einasto_index = self._parameters['Einasto_index']
-        dn = self.d_n_exact(Einasto_index)
+        dn = 2*Einasto_index if self.DARK_MATTER_HALO else self.d_n_exact(Einasto_index)
         
         scale_radius = self._parameters['scale_radius']/dn**Einasto_index
         return - (np.power(radius/scale_radius,1/Einasto_index))/(Einasto_index*radius)
