@@ -114,7 +114,7 @@ class MultiProfiles:
         return "<" + contain +">"
         
     def fit(self, radial_data, profile_data, profile_err=None, use_analytical_jac=True, guess=None, verbose=0,
-            return_profile = False, return_cov = False, **kwargs):
+            logfit = True, return_profile = False, return_cov = False, **kwargs):
         """Fit the given profile using a least-squares method.
 
         Parameters
@@ -165,9 +165,17 @@ class MultiProfiles:
 
         if radial_data.size != profile_data.size != profile_err.size:
             raise RuntimeError("Provided data arrays do not match in shape")
-
+        
+        if (radial_data<0).any() and logfit:
+            raise RuntimeError("Provided data contains negative values, should set logfit=False")
+        
         if use_analytical_jac:
             jac = self.jacobian
+            if logfit:
+                def jacobian_wrapper(radius, *args):
+                    self.jacobian(radius,*args)
+                    return np.einsum('ij,i->ij',self.jacobian(radius,*args),1/self(radius, *args))
+                jac = jacobian_wrapper
         else:
             jac = '3-point'
 
@@ -175,7 +183,9 @@ class MultiProfiles:
 
         def profile_wrapper(radius, *args):
             return self(radius, *args)
-
+        if logfit:
+            def profile_wrapper(radius, *args):
+                return np.log(self(radius, *args))
 
         # the same type profile,  with different initial guesses
         count = Counter(self._profiles)
@@ -200,6 +210,8 @@ class MultiProfiles:
         diff_step=kwargs.get('diff_step',None)
         tr_solver=kwargs.get('tr_solver',None)
         try:
+            if logfit:
+                profile_data= np.log(profile_data)
             parameters, cov = so.curve_fit(profile_wrapper,
                                            radial_data,
                                            profile_data,

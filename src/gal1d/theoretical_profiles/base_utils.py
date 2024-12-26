@@ -7,6 +7,7 @@ At present only the NFW profile is implemented, but the code is designed to be e
 
 
 pynbody profiles: AbstractBaseProfile,
+AbstractBaseProfile: add logfit, make the fit more robust in some cases
 """
 
 import abc
@@ -70,7 +71,7 @@ class AbstractBaseProfile(abc.ABC):
 
     @classmethod
     def fit(cls, radial_data, profile_data, profile_err=None, use_analytical_jac=True, guess=None, verbose=0,
-            return_profile = True, **kwargs):
+            logfit = True,return_profile = True,**kwargs):
         """Fit the given profile using a least-squares method.
 
         Parameters
@@ -94,10 +95,13 @@ class AbstractBaseProfile(abc.ABC):
 
         verbose : int
             The verbosity level to pass to the underlying ``scipy.optimize.curve_fit`` function.
-
+        
+        logfit: bool
+            Whether to fit data in the log space 
+        
         return_profile : bool
             Whether to return the profile object or just the parameters
-
+        
         Returns
         -------
 
@@ -120,10 +124,15 @@ class AbstractBaseProfile(abc.ABC):
 
         if radial_data.size != profile_data.size != profile_err.size:
             raise RuntimeError("Provided data arrays do not match in shape")
+        if (radial_data<0).any() and logfit:
+            raise RuntimeError("Provided data contains negative values, should set logfit=False")
 
         if use_analytical_jac:
             def jacobian_wrapper(radius, *args):
                 return cls(*args).jacobian(radius)
+            if logfit:                              
+                def jacobian_wrapper(radius, *args):
+                    return np.einsum('ij,i->ij',cls(*args).jacobian(radius),1/cls(*args)(radius))
             jac = jacobian_wrapper
         else:
             jac = '3-point'
@@ -132,6 +141,9 @@ class AbstractBaseProfile(abc.ABC):
 
         def profile_wrapper(radius, *args):
             return cls(*args)(radius)
+        if logfit:
+            def profile_wrapper(radius, *args):
+                return np.log( cls(*args)(radius))
 
         if guess is None:
             guess = (np.asarray(upper_bounds) + np.asarray(lower_bounds)) / 2.0
@@ -146,6 +158,8 @@ class AbstractBaseProfile(abc.ABC):
         diff_step=kwargs.get('diff_step',None)
         tr_solver=kwargs.get('tr_solver',None)
         try:
+            if logfit:
+                profile_data= np.log(profile_data)
             parameters, cov = so.curve_fit(profile_wrapper,
                                            radial_data,
                                            profile_data,
