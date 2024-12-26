@@ -350,7 +350,82 @@ class CoreSersicProfile(AbstractBaseProfile):
         coef2 = n*(np.power(radius,alpha)+r_b**alpha)
         return - coef1/coef2
         
+    def enclosed_mass(self, radius):
+        pass
+    
+class BrokenExponentialProfile(AbstractBaseProfile):
+    ''' a broken exponential profile '''
+    
+    
+    BOUND={}
+    BOUND['alpha'] = [0,40]
+    def __init__(self,I_0, h1, h2, r_b, alpha):
+        '''a broken exponential profile
+        (Erwin et al. 2008)
+        
+        Parameters
+        ----------
+        I_0:    float, the central intensity of the inner exponential
+        h1:    float, the inner exponential scale lengths
+        h2:    float, the outer exponential scale lengths, >0
+        r_b:      float, the break radius, >0
+        alpha:  float, the sharpness of the break, >0
+        ----------
+        designed to fit the surface-brightness profiles of disks which are not single-exponential
+        e.g., disks with truncations or antitruncations 
+        (Erwin et al. 2005; Erwin et al. 2008; Muñoz-Mateos et al. 2013)
+        '''
+        super().__init__()
+        self._parameters['I_0']=I_0
+        self._parameters['h1']=h1
+        self._parameters['h2']=h2
+        self._parameters['r_b']=r_b
+        self._parameters['alpha']=alpha
+        
+    @classmethod
+    def parameter_bounds(cls, r_values, rho_values):
+        I_0_lower_bound = np.amin(rho_values)
+        I_0_upper_bound = np.amax(rho_values)
+        
+        h1_lower_bound = np.amin(r_values)
+        h1_upper_bound = np.amax(r_values)
+        
+        h2_lower_bound = np.amin(r_values)
+        h2_upper_bound = np.amax(r_values)
+
+        r_b_lower_bound = np.amin(r_values)
+        r_b_upper_bound = np.amax(r_values)
+        
+        alpha_lower_bound = cls.BOUND['alpha'][0]
+        alpha_upper_bound = cls.BOUND['alpha'][1]
+        
+
+
+        return ([I_0_lower_bound, h1_lower_bound, h2_lower_bound, r_b_lower_bound, alpha_lower_bound], 
+                [I_0_upper_bound, h1_upper_bound, h2_upper_bound, r_b_upper_bound, alpha_upper_bound])
+        
+    def jacobian(self,radius):
+        pass
+        
+    def __call__(self, radius):
+        radius = np.asarray(radius)
+        I_0 = self._parameters['I_0']
+        h1 = self._parameters['h1']
+        h2 = self._parameters['h2']
+        r_b = self._parameters['r_b']
+        alpha = self._parameters['alpha']
+
+        S = (1+ np.exp(-alpha*r_b))**(-1/alpha*(1/h1-1/h2))
+        coef1 = S*I_0*np.exp(-radius/h1)
+        coef2 = 1+np.exp(alpha*(radius-r_b))
+        coef3 = 1/alpha*(1/h1-1/h2)
+        
+        return coef1*np.power(coef2,coef3)
+    
+    def logarithmic_slope(self,radius):
+        radius = np.asarray(radius)
         
         pass
+        
     def enclosed_mass(self, radius):
         pass
