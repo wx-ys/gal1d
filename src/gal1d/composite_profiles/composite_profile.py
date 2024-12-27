@@ -77,7 +77,7 @@ class MultiProfiles:
     
     def enclosed_mass(self, radius, *args):
         mass = 0 if (isinstance(radius,int) or isinstance(radius,float)) else np.zeros(len(radius))
-        radius = np.asarray(radius)
+#        radius = np.asarray(radius)
         parameter = args if args else tuple(self._paall)
         for i in range(len(self._profiles)):
             ind_s = int(np.sum(self._panums[:i]))
@@ -87,7 +87,7 @@ class MultiProfiles:
     
     def components_enclosed_mass(self,radius,*args):
         parameter = args if args else tuple(self._paall)
-        radius = np.asarray(radius)
+        #radius = np.asarray(radius)
         mass = []
         for i in range(len(self._profiles)):
             ind_s = int(np.sum(self._panums[:i]))

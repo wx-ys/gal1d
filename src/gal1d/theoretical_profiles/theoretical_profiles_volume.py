@@ -72,7 +72,7 @@ class NFWProfile(AbstractBaseProfile):
             self._parameters['density_scale_radius'] = self._derive_central_overdensity()
         else:
             raise ValueError("Invalid combination of parameters for initializing NFWProfile.")
-
+        self._ndim = 3
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
         profile_lower_bound = np.amin(rho_values)
@@ -111,7 +111,7 @@ class NFWProfile(AbstractBaseProfile):
         x = radius / scale_radius
         coef = self._integral(x)
         return density_scale_radius * scale_radius ** 3 * coef
-               
+    
     def enclosed_mass_2d(self, radius):
         radius = np.asarray(radius)
         density_scale_radius = self._parameters['density_scale_radius']
@@ -277,7 +277,7 @@ class GNFWProfile(AbstractBaseProfile):
         self._parameters['density_scale_radius']=density_scale_radius
         self._parameters['scale_radius']=scale_radius
         self._parameters['gamma']=gamma
-        
+        self._ndim = 3
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
         if cls.BOUND['density_scale_radius']:
@@ -367,15 +367,10 @@ class GNFWProfile(AbstractBaseProfile):
     
     def logarithmic_slope(self, radius):
         radius = np.asarray(radius)
-        density_scale_radius = self._parameters['density_scale_radius']
         scale_radius = self._parameters['scale_radius']
         gamma = self._parameters['gamma']
-        
-        coef1 =scale_radius**3 * density_scale_radius * np.power(radius+scale_radius,gamma)/np.power(radius,gamma)
-        coef2 = np.power(radius,3)+3*scale_radius*np.power(radius,2)+3*scale_radius**2 *radius +scale_radius**3
-        coef3 = (3*radius+scale_radius*gamma)/(radius+scale_radius)
-        
-        return (np.log(coef1/coef2)-coef3)
+    
+        return -(3*radius+scale_radius*gamma)/(radius+scale_radius)
         
     def _integral(self, func, x):
         gamma = self._parameters['gamma']
@@ -490,7 +485,7 @@ class DoublePowerLawProfile(AbstractBaseProfile):
         self._parameters['alpha']=alpha
         self._parameters['beta']=beta
         self._parameters['gamma']=gamma
-        
+        self._ndim = 3
         # rho(r) = rho0 * (a)^(beta) / [(r^alpha) * (a^gamma + r^gamma)^[(beta-alpha)/gamma]
         
         
@@ -581,7 +576,7 @@ class DoublePowerLawProfile(AbstractBaseProfile):
         return Latex_print(s)
     
     def enclosed_mass(self, radius):
-        """Return the mass, M(r), enclosed within a given radius"""
+        return self.Integrate(radius,rmin=0.,ndim=3)
         pass
     
     def logarithmic_slope(self, radius):
@@ -625,7 +620,7 @@ class EinastoProfile(AbstractBaseProfile):
         self._parameters['density_scale_radius'] = density_scale_radius
         self._parameters['scale_radius'] = scale_radius
         self._parameters['Einasto_index'] = Einasto_index
-        
+        self._ndim = 3
         
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
@@ -710,18 +705,45 @@ class EinastoProfile(AbstractBaseProfile):
     
     def formular(self):
         s=r'\rho(r) = \rho_s \mathrm{exp}\{- d_n [(\frac{r}{r_s})^{\frac{1}{n}}-1]\}'
+        if self.DARK_MATTER_HALO:
+            s=r'\rho(r) = \rho_s \mathrm{exp}\{- 2n [(\frac{r}{r_s})^{\frac{1}{n}}-1]\}'
         return Latex_print(s)
     
-    def enclosed_mass(self, radius):
-        # Eq 8 in Baes 2022
+    def enclosed_mass(self,radius):
+        # Eq 13 in  Retana-Montenegro et al. 2012
         radius = np.asarray(radius)
+        density_scale_radius = self._parameters['density_scale_radius']
+        scale_radius = self._parameters['scale_radius']
+        Einasto_index = self._parameters['Einasto_index']
+        dn = 2*Einasto_index if self.DARK_MATTER_HALO else self.d_n_exact(Einasto_index)
+        
+        rs = self._parameters['scale_radius']/dn**Einasto_index
+        s = radius/scale_radius
+
+        return self.total_mass()*(GammaInc(3*Einasto_index,0,2*Einasto_index*np.power(s,1/Einasto_index))/Gamma(3*Einasto_index))
+    
+    def total_mass(self):
+        # Eq 8 in Baes 2022
         Einasto_index = self._parameters['Einasto_index']
         dn = 2*Einasto_index if self.DARK_MATTER_HALO else self.d_n_exact(Einasto_index)
         central_density = self._parameters['density_scale_radius']*np.exp(dn)
         
-        scale_radius = self._parameters['scale_radius']/dn**Einasto_index
+        rs = self._parameters['scale_radius']/dn**Einasto_index
         
-        return 4*np.pi*central_density*scale_radius**3*Einasto_index*Gamma(3*Einasto_index)
+        return 4*np.pi*central_density*rs**3*Einasto_index*Gamma(3*Einasto_index)
+    
+    def density_2d(self,radius):
+        # Eq 2. in 
+        # TODO
+        radius = np.asarray(radius)
+        density_scale_radius = self._parameters['density_scale_radius']
+        scale_radius = self._parameters['scale_radius']
+        Einasto_index = self._parameters['Einasto_index']
+        dn = 2*Einasto_index if self.DARK_MATTER_HALO else self.d_n_exact(Einasto_index)
+        
+        coef1 = 2*np.exp(dn)*scale_radius*Einasto_index*density_scale_radius/dn**Einasto_index
+        coef2 = GammaInc(Einasto_index,0,)
+        pass
     
     def logarithmic_slope(self, radius):
         radius = np.asarray(radius)

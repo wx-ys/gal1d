@@ -34,7 +34,7 @@ class SersicProfile(AbstractBaseProfile):
         self._parameters['n']=n
         self._parameters['r_e']=r_e
         self._parameters['I_e']=I_e
-        
+        self._ndim = 2
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
         if cls.BOUND['r_e']:
@@ -163,7 +163,7 @@ class ExponentialProfile(AbstractBaseProfile):
         super().__init__()
         self._parameters['h']=h
         self._parameters['I_0']=I_0
-    
+        self._ndim = 2
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
         I_0_lower_bound = np.amin(rho_values)
@@ -245,7 +245,7 @@ class CoreSersicProfile(AbstractBaseProfile):
         self._parameters['n']=n
         self._parameters['alpha']=alpha
         self._parameters['gamma']=gamma
-        
+        self._ndim = 2
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
         I_b_lower_bound = np.amin(rho_values)
@@ -351,14 +351,14 @@ class CoreSersicProfile(AbstractBaseProfile):
         return - coef1/coef2
         
     def enclosed_mass(self, radius):
-        pass
+        return self.Integrate(radius,rmin=0.,ndim=2)
     
 class BrokenExponentialProfile(AbstractBaseProfile):
     ''' a broken exponential profile '''
     
     
     BOUND={}
-    BOUND['alpha'] = [0,40]
+    BOUND['alpha'] = [0,20]
     def __init__(self,I_0, h1, h2, r_b, alpha):
         '''a broken exponential profile
         (Erwin et al. 2008)
@@ -381,7 +381,7 @@ class BrokenExponentialProfile(AbstractBaseProfile):
         self._parameters['h2']=h2
         self._parameters['r_b']=r_b
         self._parameters['alpha']=alpha
-        
+        self._ndim = 2
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
         I_0_lower_bound = np.amin(rho_values)
@@ -405,7 +405,43 @@ class BrokenExponentialProfile(AbstractBaseProfile):
                 [I_0_upper_bound, h1_upper_bound, h2_upper_bound, r_b_upper_bound, alpha_upper_bound])
         
     def jacobian(self,radius):
-        pass
+        radius = np.asarray(radius)
+        I_0 = self._parameters['I_0']
+        h1 = self._parameters['h1']
+        h2 = self._parameters['h2']
+        r_b = self._parameters['r_b']
+        alpha = self._parameters['alpha']
+        S = (1+ np.exp(-alpha*r_b))**(-1/alpha*(1/h1-1/h2))
+        
+        coef1 = S*np.exp(-radius/h1)
+        coef2 = 1+np.exp(alpha*(radius-r_b))
+        coef3 = 1/alpha*(1/h1-1/h2)
+        coef4 = np.power(coef2,coef3)
+        d_I_0 = coef1*coef4
+        
+        tempcoef2 = radius*coef4*np.exp(-radius/h1)/h1**2
+        tempcoef3 = coef4*np.log(coef2)*np.exp(-radius/h1)/h1**2/alpha
+        tempcoef4 = (tempcoef2-tempcoef3)
+        tempcoef5 = np.log(1+ np.exp(-alpha*r_b))*coef4*np.exp(-radius/h1)/h1**2/alpha
+        d_h1 = I_0*(tempcoef4+tempcoef5)*S
+        
+        temp_coef2 = coef4*np.log(coef2)/alpha/h2**2
+        temp_coef3 = coef4*np.log(1+ np.exp(-alpha*r_b))/alpha/h2**2
+        d_h2 = I_0*np.exp(-radius/h1)*(temp_coef2-temp_coef3)*S
+        
+        temp_coef2 = (1/h1-1/h2)*coef4*np.exp(-alpha*r_b)/(1+ np.exp(-alpha*r_b))
+        temp_coef3 = ((1/h1-1/h2)*np.exp(alpha*(radius-r_b))
+                      *np.power(coef2,coef3-1))
+        d_r_b = I_0*np.exp(-radius/h1)*(temp_coef2-temp_coef3)*S
+        
+        temp_coef1 = coef4*(1/h1-1/h2)*I_0*np.exp(-radius/h1)/alpha**2
+        temp_coef2 = ((radius-r_b)*alpha*(coef2-1)/coef2 - np.log(coef2))
+        temp_coef3 = (np.log(np.exp(-r_b*alpha)+1)+ r_b*alpha*np.exp(-r_b*alpha)/(np.exp(-r_b*alpha)+1))
+        d_alpha = temp_coef1*(temp_coef2+temp_coef3)*S
+        
+                      
+        
+        return np.transpose([d_I_0, d_h1, d_h2, d_r_b, d_alpha])
         
     def __call__(self, radius):
         radius = np.asarray(radius)
@@ -424,8 +460,15 @@ class BrokenExponentialProfile(AbstractBaseProfile):
     
     def logarithmic_slope(self,radius):
         radius = np.asarray(radius)
+        h1 = self._parameters['h1']
+        h2 = self._parameters['h2']
+        r_b = self._parameters['r_b']
+        alpha = self._parameters['alpha']
+        eax = np.exp(alpha*radius)
+        eab = np.exp(alpha*r_b)
         
-        pass
+        return (-(h1-h2)*eax/(h1*h2*(eax+eab)) - 1/h1)
+        
         
     def enclosed_mass(self, radius):
-        pass
+        return self.Integrate(radius,rmin=0.,ndim=2)

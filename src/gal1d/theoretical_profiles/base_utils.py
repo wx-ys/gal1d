@@ -34,7 +34,8 @@ class AbstractBaseProfile(abc.ABC):
     """
     def __init__(self):
         self._parameters = dict()
-
+        self._ndim = 3
+        self._rmin = 0.
     @classmethod
     @abc.abstractmethod
     def parameter_bounds(self, r_values, rho_values):
@@ -68,6 +69,26 @@ class AbstractBaseProfile(abc.ABC):
     def enclosed_mass(self, radius):
         """Return the mass, M(r), enclosed within a given radius"""
         pass
+    
+    def Integrate(self, radius, **kwargs):
+        '''Return the mass, determined by dim and radius '''
+        from scipy.integrate import quad
+        ndim = kwargs.get('ndim',self._ndim)
+        rmin = kwargs.get('rmin',self._rmin)
+        def d_mass_1D(radius):
+            return self(radius)
+        def d_mass_2D(radius):
+            return self(radius)*np.pi*2*radius
+        def d_mass_3D(radius):
+            return self(radius)*np.pi*4*radius**2
+        func = {1:d_mass_1D,2:d_mass_2D,3:d_mass_3D}
+        
+        if isinstance(radius,int) or isinstance(radius,float):
+            mass,err = quad(func[ndim],rmin,radius)
+            return mass
+        if hasattr(radius,'__iter__'):
+            return np.array([quad(func[ndim],rmin,i) for i in radius])[:,0]
+        raise TypeError('Unknown type')
 
     @classmethod
     def fit(cls, radial_data, profile_data, profile_err=None, use_analytical_jac=True, guess=None, verbose=0,

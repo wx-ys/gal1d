@@ -24,6 +24,7 @@ analysis a single theoretical profile or a combination of the addition of some o
 * SersicProfile: a Sersic profile (Sérsic 1963, 1968)
 * ExponentialProfile: an exponential profile
 * CoreSersicProfile: a core-Sersic profile (Graham et al. 2003; Trujillo et al. 2004)
+* BrokenExponentialProfile: a broken exponential profile (Erwin et al. 2008)
 
 ...
 
