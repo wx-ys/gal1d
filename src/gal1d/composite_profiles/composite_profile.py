@@ -112,6 +112,39 @@ class MultiProfiles:
             contain = contain + i.__name__+'|'
         contain = contain + '|'
         return "<" + contain +">"
+    
+    def chi2(self,radial_data,profile_data,profile_error=None,mode='Model'):
+        w = profile_error
+        if mode =='Model':
+            if not isinstance(w,type(None)):
+                return np.sum((self(radial_data)-profile_data)**2/w**2).view(np.ndarray)
+            return np.sum((self(radial_data)-profile_data)**2/np.abs(self(radial_data))).view(np.ndarray)
+        if mode == 'Data':
+            if not isinstance(w,type(None)):
+                return np.sum((self(radial_data)-profile_data)**2/w**2).view(np.ndarray)
+            return np.sum((self(radial_data)-profile_data)**2/np.abs(profile_data)).view(np.ndarray)
+        if isinstance(w,type(None)):
+            w = 1.
+        if mode == 'Cash':
+            return 2*np.sum(w*(self(radial_data)-profile_data*np.log(self(radial_data)))).view(np.ndarray)
+        if mode == 'PMLR':
+            return 2*np.sum(w*(self(radial_data)-profile_data*np.log(self(radial_data))+profile_data*np.log(profile_data)-profile_data))
+        
+    def AIC(self,radial_data,profile_data,**kwargs):
+        profile_error=kwargs.get('profile_error',None)
+        mode=kwargs.get('mode','Model')
+        chi2 = self.chi2(radial_data=radial_data,profile_data=profile_data,profile_error=profile_error,mode=mode)
+        k = len(self._panums)+len(self._coefs)
+        n = len(radial_data)
+        return chi2+2*k+2*k*(k+1)/(n-k-1)
+    
+    def BIC(self,radial_data,profile_data,**kwargs):
+        profile_error=kwargs.get('profile_error',None),
+        mode=kwargs.get('mode','Model')
+        chi2 = self.chi2(radial_data=radial_data,profile_data=profile_data,profile_error=profile_error,mode=mode)
+        k = len(self._panums)+len(self._coefs)
+        n = len(radial_data)
+        return chi2+k*np.log(n)
         
     def fit(self, radial_data, profile_data, profile_err=None, use_analytical_jac=True, guess=None, verbose=0,
             logfit = True, return_profile = False, return_cov = False, **kwargs):

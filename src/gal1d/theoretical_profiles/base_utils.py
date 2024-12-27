@@ -205,7 +205,6 @@ class AbstractBaseProfile(abc.ABC):
 
         if (guess is None and any(parameters == np.ones(parameters.shape))) or any(parameters == guess):
             raise RuntimeError("Fitted parameters are equal to their initial guess. This is likely a failed fit.")
-
         if return_profile:
             return cls(*parameters), cov
         else:
@@ -222,7 +221,39 @@ class AbstractBaseProfile(abc.ABC):
 
     def __repr__(self):
         return "<" + self.__class__.__name__ + str(list(self.keys())) + ">"
-
+    def chi2(self,radial_data,profile_data,profile_error=None,mode='Model'):
+        w = profile_error
+        if mode =='Model':
+            if not isinstance(w,type(None)):
+                print(type(w),w)
+                return np.sum((self(radial_data)-profile_data)**2/w**2).view(np.ndarray)
+            return np.sum((self(radial_data)-profile_data)**2/np.abs(self(radial_data))).view(np.ndarray)
+        if mode == 'Data':
+            if not isinstance(w,type(None)):
+                return np.sum((self(radial_data)-profile_data)**2/w**2).view(np.ndarray)
+            return np.sum((self(radial_data)-profile_data)**2/np.abs(profile_data)).view(np.ndarray)
+        if isinstance(w,type(None)):
+            w = 1.
+        if mode == 'Cash':
+            return 2*np.sum(w*(self(radial_data)-profile_data*np.log(self(radial_data)))).view(np.ndarray)
+        if mode == 'PMLR':
+            return 2*np.sum(w*(self(radial_data)-profile_data*np.log(self(radial_data))+profile_data*np.log(profile_data)-profile_data))
+    def AIC(self,radial_data,profile_data,**kwargs):
+        profile_error=kwargs.get('profile_error',None)
+        mode=kwargs.get('mode','Model')
+        chi2 = self.chi2(radial_data=radial_data,profile_data=profile_data,profile_error=profile_error,mode=mode)
+        k = len(self.keys())
+        n = len(radial_data)
+        return chi2+2*k+2*k*(k+1)/(n-k-1)
+    
+    def BIC(self,radial_data,profile_data,**kwargs):
+        profile_error=kwargs.get('profile_error',None),
+        mode=kwargs.get('mode','Model')
+        chi2 = self.chi2(radial_data=radial_data,profile_data=profile_data,profile_error=profile_error,mode=mode)
+        k = len(self.keys())
+        n = len(radial_data)
+        return chi2+k*np.log(n)
+        
     def keys(self):
         """Return the keys of the profile parameters"""
         return list(self._parameters.keys())
