@@ -34,7 +34,7 @@ class SersicProfile(AbstractBaseProfile):
         self._parameters['n']=n
         self._parameters['r_e']=r_e
         self._parameters['I_e']=I_e
-        self._ndim = 2
+        self.__ndim = 2
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
         if cls.BOUND['r_e']:
@@ -163,7 +163,7 @@ class ExponentialProfile(AbstractBaseProfile):
         super().__init__()
         self._parameters['h']=h
         self._parameters['I_0']=I_0
-        self._ndim = 2
+        self.__ndim = 2
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
         I_0_lower_bound = np.amin(rho_values)
@@ -245,7 +245,7 @@ class CoreSersicProfile(AbstractBaseProfile):
         self._parameters['n']=n
         self._parameters['alpha']=alpha
         self._parameters['gamma']=gamma
-        self._ndim = 2
+        self.__ndim = 2
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
         I_b_lower_bound = np.amin(rho_values)
@@ -381,7 +381,7 @@ class BrokenExponentialProfile(AbstractBaseProfile):
         self._parameters['h2']=h2
         self._parameters['r_b']=r_b
         self._parameters['alpha']=alpha
-        self._ndim = 2
+        self.__ndim = 2
     @classmethod
     def parameter_bounds(cls, r_values, rho_values):
         I_0_lower_bound = np.amin(rho_values)
@@ -468,7 +468,10 @@ class BrokenExponentialProfile(AbstractBaseProfile):
         eab = np.exp(alpha*r_b)
         
         return (-(h1-h2)*eax/(h1*h2*(eax+eab)) - 1/h1)
-        
+    
+    def formular(self):
+        #TODO
+        pass
         
     def enclosed_mass(self, radius):
         return self.Integrate(radius,rmin=0.,ndim=2)

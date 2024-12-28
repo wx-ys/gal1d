@@ -34,7 +34,7 @@ class AbstractBaseProfile(abc.ABC):
     """
     def __init__(self):
         self._parameters = dict()
-        self._ndim = 3
+        self.__ndim = 3
         self._rmin = 0.
     @classmethod
     @abc.abstractmethod
@@ -59,7 +59,16 @@ class AbstractBaseProfile(abc.ABC):
 
         """
         pass
-
+    @property
+    def ndim(self):
+        return self.__ndim
+    @ndim.setter
+    def ndim(self,ndim):
+        if ndim in [1,2,3]:
+            self.__ndim=ndim
+            return
+        raise TypeError('Only 1,2,3')
+    
     @abc.abstractmethod
     def logarithmic_slope(self, radius):
         """Return the logarithmic slope of the profile, d ln rho / d ln r, at a given radius"""
@@ -73,8 +82,8 @@ class AbstractBaseProfile(abc.ABC):
     def Integrate(self, radius, **kwargs):
         '''Return the mass, determined by dim and radius '''
         from scipy.integrate import quad
-        ndim = kwargs.get('ndim',self._ndim)
-        rmin = kwargs.get('rmin',self._rmin)
+        ndim = kwargs.get('ndim',self.__ndim)
+        rmin = kwargs.get('rmin',self.__ndim)
         def d_mass_1D(radius):
             return self(radius)
         def d_mass_2D(radius):
@@ -222,22 +231,28 @@ class AbstractBaseProfile(abc.ABC):
     def __repr__(self):
         return "<" + self.__class__.__name__ + str(list(self.keys())) + ">"
     def chi2(self,radial_data,profile_data,profile_error=None,mode='Model'):
+        radial_data = radial_data.view(np.ndarray)
+        profile_data = profile_data.view(np.ndarray)
         w = profile_error
+        if isinstance(w,type(None)):
+            w = np.sqrt(np.abs(profile_data))
         if mode =='Model':
             if not isinstance(w,type(None)):
-                print(type(w),w)
-                return np.sum((self(radial_data)-profile_data)**2/w**2).view(np.ndarray)
-            return np.sum((self(radial_data)-profile_data)**2/np.abs(self(radial_data))).view(np.ndarray)
+                w = w*np.sqrt(np.abs(self(radial_data)))
+            else:
+                w = np.sqrt(np.abs(self(radial_data)))
+            return np.sum((self(radial_data)-profile_data)**2/w**2)
         if mode == 'Data':
             if not isinstance(w,type(None)):
-                return np.sum((self(radial_data)-profile_data)**2/w**2).view(np.ndarray)
-            return np.sum((self(radial_data)-profile_data)**2/np.abs(profile_data)).view(np.ndarray)
-        if isinstance(w,type(None)):
-            w = 1.
+                w = w*np.sqrt(np.abs(profile_data))
+            else:
+                w = np.sqrt(np.abs(profile_data))
+            return np.sum((self(radial_data)-profile_data)**2/w**2)
         if mode == 'Cash':
-            return 2*np.sum(w*(self(radial_data)-profile_data*np.log(self(radial_data)))).view(np.ndarray)
+            return 2*np.sum((self(radial_data)-profile_data*np.log(self(radial_data))))
         if mode == 'PMLR':
-            return 2*np.sum(w*(self(radial_data)-profile_data*np.log(self(radial_data))+profile_data*np.log(profile_data)-profile_data))
+            return 2*np.sum((self(radial_data)-profile_data*np.log(self(radial_data))
+                               +profile_data*np.log(profile_data)-profile_data))
     def AIC(self,radial_data,profile_data,**kwargs):
         profile_error=kwargs.get('profile_error',None)
         mode=kwargs.get('mode','Model')

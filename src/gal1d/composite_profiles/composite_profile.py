@@ -7,19 +7,37 @@ from ..theoretical_profiles import AbstractBaseProfile
 from .composite_utils import get_required_params_num
 
 class MultiProfiles:
+    ''' fit multiple profiles, c1*p1+c2*p2+ ... + ci*pi 
+    add_profile: add a theoretical_paofile pi
+    '''
     
     
-    
-    def __init__(self,):
+    def __init__(self,ndim:int):
+        '''
+        ndim: dimension, determine how to integrate, enclosed mass
+        -----
+        '''
         self._profiles = []
-        self._coefs = []
         self._panums = []
+        if ndim in [1,2,3]:
+            self.__ndim=ndim
+        else:
+            raise TypeError('Only 1,2,3')
+        
+    @property
+    def ndim(self):
+        return self.__ndim
+    @ndim.setter
+    def ndim(self,ndim):
+        if ndim in [1,2,3]:
+            self.__ndim=ndim
+            return
+        raise TypeError('Only 1,2,3')
         
     def add_profile(self,profile):
         if not issubclass(profile,AbstractBaseProfile):
             raise TypeError('Only theoretical profiles are allowed')
         self._profiles.append(profile)
-        self._coefs.append(1.)
         self._panums.append(get_required_params_num(profile))
         
     def __getitem__(self, item):
@@ -28,11 +46,9 @@ class MultiProfiles:
             ind = int(item[1:]) - 1
             ind_s = int(np.sum(self._panums[:ind]))
             ind_e= int(np.sum(self._panums[:ind+1]))
-            return self._profiles[ind](*tuple(self._paall)[ind_s:ind_e])
-        
-        if item[0] == 'c':
-            ind = int(item[1:]) - 1
-            return self._coefs[ind]
+            pr = self._profiles[ind](*tuple(self._paall)[ind_s:ind_e])
+            pr.ndim = self.ndim
+            return pr
     
     def parameter_bounds(self,radial_data,profile_data):
         lower_bounds = []
@@ -41,10 +57,7 @@ class MultiProfiles:
             lower, upper = i.parameter_bounds(radial_data, profile_data)
             lower_bounds = lower_bounds +lower
             upper_bounds = upper_bounds +upper
-            
-        lower_bounds = lower_bounds + list(np.zeros(len(self._coefs)))
-        upper_bounds = upper_bounds + list(np.ones(len(self._coefs)))
-        
+    
         return (lower_bounds,upper_bounds)
     
     def __call__(self, radius, *args):
@@ -55,7 +68,7 @@ class MultiProfiles:
         for i in range(len(self._profiles)):
             ind_s = int(np.sum(self._panums[:i]))
             ind_e= int(np.sum(self._panums[:i+1]))
-            pr = pr + self._profiles[i](*parameter[ind_s:ind_e])(radius)*self._coefs[i]
+            pr = pr + self._profiles[i](*parameter[ind_s:ind_e])(radius)
         return pr
         
     def set_parameter(self,*args):
@@ -67,13 +80,11 @@ class MultiProfiles:
         parameter = args if args else tuple(self._paall)
         radius = np.asarray(radius)
         jacobian_all=[]
-        coef_jacobian = []
         for i in range(len(self._profiles)):
             ind_s = int(np.sum(self._panums[:i]))
             ind_e= int(np.sum(self._panums[:i+1]))
-            jacobian_all.append(np.transpose(self._profiles[i](*parameter[ind_s:ind_e]).jacobian(radius)*self._coefs[i]))
-            coef_jacobian.append(self._profiles[i](*parameter[ind_s:ind_e])(radius))
-        return np.transpose(np.vstack([np.vstack(jacobian_all),np.vstack(coef_jacobian)]))
+            jacobian_all.append(np.transpose(self._profiles[i](*parameter[ind_s:ind_e]).jacobian(radius)))
+        return np.transpose(np.vstack(jacobian_all))
     
     def enclosed_mass(self, radius, *args):
         mass = 0 if (isinstance(radius,int) or isinstance(radius,float)) else np.zeros(len(radius))
@@ -82,7 +93,9 @@ class MultiProfiles:
         for i in range(len(self._profiles)):
             ind_s = int(np.sum(self._panums[:i]))
             ind_e= int(np.sum(self._panums[:i+1]))
-            mass = mass + self._profiles[i](*parameter[ind_s:ind_e]).enclosed_mass(radius)*self._coefs[i]
+            pr = self._profiles[i](*parameter[ind_s:ind_e])
+            pr.ndim = self.ndim
+            mass = mass + pr.enclosed_mass(radius)
         return mass
     
     def components_enclosed_mass(self,radius,*args):
@@ -92,7 +105,9 @@ class MultiProfiles:
         for i in range(len(self._profiles)):
             ind_s = int(np.sum(self._panums[:i]))
             ind_e= int(np.sum(self._panums[:i+1]))
-            mass.append(self._profiles[i](*parameter[ind_s:ind_e]).enclosed_mass(radius)*self._coefs[i])
+            pr = self._profiles[i](*parameter[ind_s:ind_e])
+            pr.ndim = self.ndim
+            mass.append(pr.enclosed_mass(radius))
         return tuple(mass)
         
     def components_profile(self,radius,*args):
@@ -102,7 +117,7 @@ class MultiProfiles:
         for i in range(len(self._profiles)):
             ind_s = int(np.sum(self._panums[:i]))
             ind_e= int(np.sum(self._panums[:i+1]))
-            pr.append(self._profiles[i](*parameter[ind_s:ind_e])(radius)*self._coefs[i])
+            pr.append(self._profiles[i](*parameter[ind_s:ind_e])(radius))
         return tuple(pr)
     
     
@@ -114,27 +129,34 @@ class MultiProfiles:
         return "<" + contain +">"
     
     def chi2(self,radial_data,profile_data,profile_error=None,mode='Model'):
+        radial_data = radial_data.view(np.ndarray)
+        profile_data = profile_data.view(np.ndarray)
         w = profile_error
+        if isinstance(w,type(None)):
+            w = np.sqrt(np.abs(profile_data))
         if mode =='Model':
             if not isinstance(w,type(None)):
-                return np.sum((self(radial_data)-profile_data)**2/w**2).view(np.ndarray)
-            return np.sum((self(radial_data)-profile_data)**2/np.abs(self(radial_data))).view(np.ndarray)
+                w = w*np.sqrt(np.abs(self(radial_data)))
+            else:
+                w = np.sqrt(np.abs(self(radial_data)))
+            return np.sum((self(radial_data)-profile_data)**2/w**2)
         if mode == 'Data':
             if not isinstance(w,type(None)):
-                return np.sum((self(radial_data)-profile_data)**2/w**2).view(np.ndarray)
-            return np.sum((self(radial_data)-profile_data)**2/np.abs(profile_data)).view(np.ndarray)
-        if isinstance(w,type(None)):
-            w = 1.
+                w = w*np.sqrt(np.abs(profile_data))
+            else:
+                w = np.sqrt(np.abs(profile_data))
+            return np.sum((self(radial_data)-profile_data)**2/w**2)
         if mode == 'Cash':
-            return 2*np.sum(w*(self(radial_data)-profile_data*np.log(self(radial_data)))).view(np.ndarray)
+            return 2*np.sum((self(radial_data)-profile_data*np.log(self(radial_data))))
         if mode == 'PMLR':
-            return 2*np.sum(w*(self(radial_data)-profile_data*np.log(self(radial_data))+profile_data*np.log(profile_data)-profile_data))
+            return 2*np.sum((self(radial_data)-profile_data*np.log(self(radial_data))
+                               +profile_data*np.log(profile_data)-profile_data))
         
     def AIC(self,radial_data,profile_data,**kwargs):
         profile_error=kwargs.get('profile_error',None)
         mode=kwargs.get('mode','Model')
         chi2 = self.chi2(radial_data=radial_data,profile_data=profile_data,profile_error=profile_error,mode=mode)
-        k = len(self._panums)+len(self._coefs)
+        k = len(self._panums)
         n = len(radial_data)
         return chi2+2*k+2*k*(k+1)/(n-k-1)
     
@@ -142,7 +164,7 @@ class MultiProfiles:
         profile_error=kwargs.get('profile_error',None),
         mode=kwargs.get('mode','Model')
         chi2 = self.chi2(radial_data=radial_data,profile_data=profile_data,profile_error=profile_error,mode=mode)
-        k = len(self._panums)+len(self._coefs)
+        k = len(self._panums)
         n = len(radial_data)
         return chi2+k*np.log(n)
         
