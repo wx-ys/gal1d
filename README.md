@@ -28,6 +28,30 @@ analysis a single theoretical profile or a combination of the addition of some o
 
 ...
 
+- MultiProfiles: the combination of some of theoretical profiles by user-defined
+
+
+## Examples
+
+- Fit dark matter halo density profile:
+
+![image](./images/HaloProfileFitting.png)
+
+- Calculate enclosed mass:
+
+![image](./images/HaloEnclosedmass.png)
+
+
+- Fit stellar surface density profile:
+
+![image](./images/SurfacedensityProfielfit.png)
+
+
+- Use composite profiles to fit it:
+
+![image](./images/Surfacecompfit.png)
+
+
 ## Maintainers
 
 [@wx-ys](https://github.com/wx-ys).
