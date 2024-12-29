@@ -12,6 +12,11 @@ Install this in editable mode.
 cd gal1d
 pip install -e .
 ```
+gal1d uses the following python packages:
+
+* numpy
+* scipy
+
 See [example](example.ipynb) for usage,
 
 
